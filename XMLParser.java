@@ -1,61 +1,85 @@
 package com.example.demo;
 
-import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
+import java.io.File;
+import java.io.IOException;
+import javax.xml.parsers.ParserConfigurationException;
+import org.xml.sax.SAXException;
 
-public class XMLParser {
+public class XmlParser {
 
-    public static void main(String[] args) {
-        try {
-            // Load and parse the XML file
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.parse("emission.xml");
+    public static void main(String argv[]) throws IOException, ParserConfigurationException, SAXException {
 
-            // Get the root element
-            Element root = document.getDocumentElement();
+        File xmlFile = new File("EmissionsData.xml");
 
-            // Get all "Row" elements
-            NodeList rowList = root.getElementsByTagName("Row");
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(xmlFile);
 
-            // Criteria variables
-            int validEntries = 0;
+        System.out.println("Root element: " + doc.getDocumentElement().getNodeName());
 
-            // Iterate through each "Row" element
-            for (int i = 0; i < rowList.getLength(); i++) {
-                Element row = (Element) rowList.item(i);
+        NodeList rows = doc.getElementsByTagName("Row");
 
-                // Get relevant child elements
-                String value = row.getElementsByTagName("Value").item(0).getTextContent();
-                String scenario = row.getElementsByTagName("Scenario").item(0).getTextContent();
-                String year = row.getElementsByTagName("Year").item(0).getTextContent();
+        int totalEntries = 0;
 
-                // Check criteria
-                if (isValidEntry(value, scenario, year)) {
-                    validEntries++;
-                    // Process the valid entry as needed
+        for (int i = 0; i < rows.getLength(); i++) {
+
+            Node row = rows.item(i);
+
+            if (row.getNodeType() == Node.ELEMENT_NODE) {
+
+                Element rowElement = (Element) row;
+
+                // Check conditions
+                String year = getElementValue(rowElement, "Year");
+                String scenario = getElementValue(rowElement, "Scenario");
+                String value = getElementValue(rowElement, "Value");
+
+                // Additional conditions
+                if ("2023".equals(year) && "WEM".equals(scenario) && isValueValid(value)) {
+                    totalEntries++;
+
+                    // Change variable names
+                    String category = getElementValue(rowElement, "Category__1_3");
+                    String nk = getElementValue(rowElement, "NK");
+                    String gasUnits = getElementValue(rowElement, "Gas___Units");
+
+                    System.out.println("Year: " + year);
+                    System.out.println("Scenario: " + scenario);
+                    System.out.println("Category: " + category);
+                    System.out.println("NK: " + nk);
+                    System.out.println("Gas Units: " + gasUnits);
+                    System.out.println("Value: " + value);
+                    System.out.println("--------------------");
                 }
             }
+        }
 
-            // Check if the total number of entries is 245
-            if (validEntries == 245) {
-                System.out.println("All criteria met. Total valid entries: " + validEntries);
-            } else {
-                System.out.println("Criteria not met. Total valid entries: " + validEntries);
-            }
+        // Check the total number of valid entries
+        System.out.println("Total valid entries: " + totalEntries);
+    }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+    private static String getElementValue(Element element, String tagName) {
+        NodeList nodeList = element.getElementsByTagName(tagName);
+        if (nodeList != null && nodeList.getLength() > 0) {
+            return nodeList.item(0).getTextContent();
+        } else {
+            return ""; // or handle it as needed
         }
     }
 
-    // Check criteria function
-    private static boolean isValidEntry(String value, String scenario, String year) {
-        double numericValue = Double.parseDouble(value);
-
-        return numericValue > 0 && scenario.equals("WEM") && year.equals("2023");
+    private static boolean isValueValid(String value) {
+        try {
+            double numericValue = Double.parseDouble(value);
+            return numericValue > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }
+
